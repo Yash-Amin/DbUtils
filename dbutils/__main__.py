@@ -2,6 +2,7 @@
 import argparse
 
 from dbutils import constants
+from dbutils.actions import insert as insert_mode
 
 
 def parse_arguments():
@@ -33,7 +34,7 @@ def main():
     args = parse_arguments()
 
     if args.mode == constants.Modes.INSERT:
-        pass
+        insert_mode.run(insert_mode.create_options_from_args())
     elif args.mode == constants.Modes.QUERY:
         pass
     elif args.mode == constants.Modes.CONVERT:
