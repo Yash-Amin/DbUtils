@@ -36,10 +36,10 @@ class InsertModeOptions:
     # MongoDB collection
     mongodb_collection: any
     # default mode
-    mode: str = "insert"
+    mode: str = constants.Modes.INSERT
 
 
-def parse_arugments() -> None:
+def parse_arugments() -> argparse.Namespace:
     """Parse arguments for insert mode."""
     parser = argparse.ArgumentParser(description="DbUtils - insert mode")
 
