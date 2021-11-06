@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pymongo.mongo_client import MongoClient
 
 from dbutils import constants
-from dbutils.utils import str2bool
+from dbutils.utils import get_comma_separated_fields, str2bool
 
 
 @dataclass
@@ -80,33 +80,78 @@ def parse_arugments() -> None:
 
 def create_options_from_args() -> InsertModeOptions:
     """Parses arguments and returns InsertModeOptions."""
-    args = parse_arugments()
-
+    args = vars(parse_arugments())
     # FIXME: get mongodb connection string from environment variable
     mongo_client = MongoClient()
 
-    return InsertModeOptions(
-        **vars(args),
-        mongodb_client=mongo_client,
-        mongodb_collection=mongo_client[args.database][args.collection],
+    args["mongodb_client"] = mongo_client
+    args["mongodb_collection"] = mongo_client[args["database"]][args["collection"]]
+    args["compare_fields"] = get_comma_separated_fields(args["compare_fields"])
+    args["compare_ignore_fields"] = get_comma_separated_fields(
+        args["compare_ignore_fields"]
     )
+
+    return InsertModeOptions(**args)
+
+
+def record_differs(
+    new_record: Dict,
+    old_record: Dict,
+    fields_to_compare: List[str] = [],
+    fields_to_ignore: List[str] = [],
+):
+    """Compares two records without datetime and id fields."""
+    # These fields will not be compared
+    keys_to_remove = ["created_at", "updated_at", "_id"] + fields_to_ignore
+
+    # Creates new dict of record if key is not in keys_to_remove
+    # or if fields_to_compare is provided then keys must be in fields_to_compare
+    remove_fields_to_ignore = lambda record: {
+        key: value
+        for key, value in record.copy().items()
+        if (
+            key not in keys_to_remove
+            and (len(fields_to_compare) == 0 or key in fields_to_compare)
+        )
+    }
+
+    new_record = remove_fields_to_ignore(new_record)
+    old_record = remove_fields_to_ignore(old_record)
+
+    return new_record != old_record
 
 
 def insert_record(options: InsertModeOptions, record: Dict) -> None:
     """Inserts record in database."""
     id_field = options.id_field
-    print(record)
 
-    # TODO: check if old record exists
-    old_record_found = False
+    # If record does not contain a key with id_field, a new record
+    # will be inserted; Else db will fetch record with given id.
+    old_record = (
+        False
+        if id_field not in record
+        else options.mongodb_collection.find_one({id_field: record[id_field]})
+    )
 
     if options.create_or_update:
         # If some values of old record differs from new record
         # update values
+        if old_record and record_differs(
+            record,
+            old_record,
+            fields_to_compare=options.compare_fields,
+            fields_to_ignore=options.compare_ignore_fields,
+        ):
+            updated_record = record.copy()
 
-        pass
+            if options.auto_manage_timestamps:
+                updated_record["updated_at"] = datetime.now()
 
-    if not old_record_found:
+            options.mongodb_collection.update_one(
+                {id_field: record[id_field]}, {"$set": updated_record}
+            )
+
+    if not old_record:
         # If old record with given id does not exists, inserts it
         if options.auto_manage_timestamps:
             record["created_at"] = datetime.now()
@@ -134,6 +179,6 @@ def run(options: InsertModeOptions) -> None:
         for record in records:
             try:
                 insert_record(options, record)
-            except:
+            except Exception as e:
                 # FIXME: add logger
                 pass
