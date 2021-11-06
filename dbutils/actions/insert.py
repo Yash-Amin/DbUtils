@@ -1,6 +1,8 @@
 """Insert mode"""
+import json
 import argparse
-from typing import List
+from datetime import datetime
+from typing import Dict, List
 from dataclasses import dataclass
 from pymongo.mongo_client import MongoClient
 
@@ -86,10 +88,52 @@ def create_options_from_args() -> InsertModeOptions:
     return InsertModeOptions(
         **vars(args),
         mongodb_client=mongo_client,
-        mongodb_collection=mongo_client[args.database][args.collection]
+        mongodb_collection=mongo_client[args.database][args.collection],
     )
+
+
+def insert_record(options: InsertModeOptions, record: Dict) -> None:
+    """Inserts record in database."""
+    id_field = options.id_field
+    print(record)
+
+    # TODO: check if old record exists
+    old_record_found = False
+
+    if options.create_or_update:
+        # If some values of old record differs from new record
+        # update values
+
+        pass
+
+    if not old_record_found:
+        # If old record with given id does not exists, inserts it
+        if options.auto_manage_timestamps:
+            record["created_at"] = datetime.now()
+
+        options.mongodb_collection.insert_one(record)
+
+    elif not options.create_or_update:
+        # If old record is found, and create_or_update option is off,
+        # raise exception
+        raise Exception(f"Record with {record.get(id_field, f'#{id_field}')=} exists")
 
 
 def run(options: InsertModeOptions) -> None:
     """Runs insert mode."""
-    pass
+
+    with open(options.input_file, "r") as input_file:
+        # TODO:
+        #    - Add an argument to specify input file type like json,csv
+        records = [
+            json.loads(line)
+            for line in input_file.read().splitlines()
+            if line.strip() != ""
+        ]
+
+        for record in records:
+            try:
+                insert_record(options, record)
+            except:
+                # FIXME: add logger
+                pass
