@@ -7,7 +7,17 @@ from dataclasses import dataclass
 from pymongo.mongo_client import MongoClient
 
 from dbutils import constants
+from dbutils.actions.query import output
 from dbutils.utils import get_comma_separated_fields, str2bool
+
+
+class OutputStats:
+    """Class for storing count of errors, insertion and updation."""
+
+    def __init__(self) -> None:
+        self.errors = 0
+        self.total_inserted_records = 0
+        self.total_updated_records = 0
 
 
 @dataclass
@@ -41,11 +51,11 @@ class InsertModeOptions:
 
 def parse_arugments() -> argparse.Namespace:
     """Parse arguments for insert mode."""
-    parser = argparse.ArgumentParser(description="DbUtils - insert mode")
+    parser = argparse.ArgumentParser(description="DbUtils - Insert mode")
 
     parser.add_argument(
         "mode",
-        help="Enter mode",
+        help="Operation mode",
         choices=[constants.Modes.INSERT],
     )
     parser.add_argument("-database", help="Mongodb Database Name", required=True)
@@ -121,7 +131,9 @@ def record_differs(
     return new_record != old_record
 
 
-def insert_record(options: InsertModeOptions, record: Dict) -> None:
+def insert_record(
+    options: InsertModeOptions, record: Dict, output_stats: OutputStats
+) -> None:
     """Inserts record in database."""
     id_field = options.id_field
 
@@ -151,6 +163,8 @@ def insert_record(options: InsertModeOptions, record: Dict) -> None:
                 {id_field: record[id_field]}, {"$set": updated_record}
             )
 
+            output_stats.total_updated_records += 1
+
     if not old_record:
         # If old record with given id does not exists, inserts it
         if options.auto_manage_timestamps:
@@ -158,14 +172,18 @@ def insert_record(options: InsertModeOptions, record: Dict) -> None:
 
         options.mongodb_collection.insert_one(record)
 
+        output_stats.total_inserted_records += 1
+
     elif not options.create_or_update:
         # If old record is found, and create_or_update option is off,
         # raise exception
+        output_stats.errors += 1
         raise Exception(f"Record with {record.get(id_field, f'#{id_field}')=} exists")
 
 
 def run(options: InsertModeOptions) -> None:
     """Runs insert mode."""
+    output_stats = OutputStats()
 
     with open(options.input_file, "r") as input_file:
         # TODO:
@@ -178,7 +196,13 @@ def run(options: InsertModeOptions) -> None:
 
         for record in records:
             try:
-                insert_record(options, record)
+                insert_record(options, record, output_stats)
             except Exception as e:
                 # FIXME: add logger
                 pass
+
+        print(
+            f"[+] Completed, total inserted records = {output_stats.total_inserted_records}, "
+            f"total updated records = {output_stats.total_updated_records}, "
+            f"total errors = {output_stats.errors}."
+        )
