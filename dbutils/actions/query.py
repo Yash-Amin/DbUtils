@@ -2,6 +2,7 @@
 import os
 import re
 import argparse
+from pymongo import mongo_client
 from dataclasses import dataclass
 from typing import Dict, List, Pattern
 from pymongo.mongo_client import MongoClient
@@ -164,4 +165,40 @@ def run(options: QueryModeOptions) -> None:
         dir_path = os.path.dirname(os.path.abspath(options.output_path))
         os.makedirs(dir_path)
 
-    pass
+    db = options.mongodb_collection
+
+    last_id = ""
+    current_batch = 0
+
+    # Fetch records in batches
+    records = db.find(options.queries).limit(options.batch_size)
+
+    while records:
+        # Records to output will be stored in this list
+        output_records = []
+
+        for record in records:
+            last_id = record["_id"]
+
+            # Create dict containing the fields specified using 'columns' argument
+            output_record = {
+                key: value
+                for key, value in record.items()
+                if len(options.columns) == 0 or key in options.columns
+            }
+
+            output_records.append(output_record)
+
+        # If no records are found, exit
+        if len(output_records) == 0:
+            return
+
+        current_batch += 1
+
+        # Fetch record for the next batch
+        next_query = {**options.queries, "_id": {"$gt": last_id}}
+        records = db.find(next_query).limit(options.batch_size)
+
+        # If number of fetched records is >= limit provided, exit
+        if options.limit > 0 and current_batch * options.batch_size >= options.limit:
+            return
