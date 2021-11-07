@@ -221,7 +221,7 @@ def run(options: QueryModeOptions) -> None:
 
     if options.output_mode == constants.OutputMode.FILE_CHUNKS:
         # Creates directory for file-chunks mode
-        os.makedirs(options.output_mode, exist_ok=True)
+        os.makedirs(options.output_path, exist_ok=True)
     elif options.output_mode == constants.OutputMode.FILE:
         # If output-mode is `file` and if output-path is '/some/path/file.csv'
         # and if directory '/some/path/' does not exist, it will be created
