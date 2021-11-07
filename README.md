@@ -2,12 +2,12 @@
 
 DbUtils is a utility tool to insert/update or query data from MongoDB. It can be used in automation scripts where you want to query data or you need some data to be stored or updated based on some conditions.
 
-Basic command - 
+Basic command -
 ```sh
 dbutils OPERATION [**OPERATION ARGS]
 ```
 
-The following operation modes are available - 
+The following operation modes are available -
 1. insert
 2. query
 
@@ -36,63 +36,63 @@ optional arguments:
 ```
 #### Examples
 
-1. Insert only   
+1. Insert only
    If you just want to insert records without checking if similar record exists, you can run the insert mode without providing the `-create-or-update` flag.
 
    ```sh
-    # Input file 
-    $ cat test._json 
+   # Input file
+   $ cat test._json
 
-    {"name": "a", "value": "A"}
-    {"name": "b", "value": "B"}
-
-
-    # Insert content from the file
-    $ dbutils insert -database Tmp -collection TmpCollection -input-file test._json 
-
-    [+] Completed, total inserted records = 2, total updated records = 0, total errors = 0.
+   {"name": "a", "value": "A"}
+   {"name": "b", "value": "B"}
 
 
-    # Query insert records
-    $ dbutils query -database Tmp -collection TmpCollection -output-mode stdout -output-file-type json -columns name,value,created_at
+   # Insert content from the file
+   $ dbutils insert -database Tmp -collection TmpCollection -input-file test._json
 
-    {"name": "a", "value": "A", "created_at": {"$date": 1636280805294}}
-    {"name": "b", "value": "B", "created_at": {"$date": 1636280805391}}
+   [+] Completed, total inserted records = 2, total updated records = 0, total errors = 0.
+
+
+   # Query insert records
+   $ dbutils query -database Tmp -collection TmpCollection -output-mode stdout -output-file-type json -columns name,value,created_at
+
+   {"name": "a", "value": "A", "created_at": {"$date": 1636280805294}}
+   {"name": "b", "value": "B", "created_at": {"$date": 1636280805391}}
    ```
-  2. Insert or Update records based on conditions  
-  Consider the following data is stored in TmpCollection - 
+  2. Insert or Update records based on conditions
+  Consider the following data is stored in TmpCollection -
         ```sh
         $ dbutils  query -database Tmp -collection TmpCollection -output-mode stdout -output-file-type json -columns name,value,created_at,updated_at
 
         {"name": "a", "value": "A", "created_at": {"$date": 1636281501457}}
         {"name": "b", "value": "Old value of B", "created_at": {"$date": 1636281501540}}
         ```
-      And content of input file is - 
+      And content of input file is -
         ```sh
-          $ cat test._json
+        $ cat test._json
 
-          {"name": "b", "value": "NEW VALUE"}
-          {"name": "c", "value": "c"}
+        {"name": "b", "value": "NEW VALUE"}
+        {"name": "c", "value": "c"}
         ```
-      
+
       Here the input file contains record for name==b and a document with the same name also exists in the database. By running the follwing command, document of name==b will be updated and document with name==c will b inserted.
 
       **Note:** If `-create-or-update` flag is provided, then `-id-field` is required, else it will not be possible to find old document for given record.
 
         ```sh
-          # Insert or update records
-          $ dbutils insert -database Tmp -collection TmpCollection -input-file test._json -create-or-update -id-field name -compare-fields value
-          
-          [+] Completed, total inserted records = 1, total updated records = 1, total errors = 0.
+        # Insert or update records
+        $ dbutils insert -database Tmp -collection TmpCollection -input-file test._json -create-or-update -id-field name -compare-fields value
 
-          # Query records, here the document 'b' is updated and a new field `updated_at` is also added
-          dbutils  query -database Tmp -collection TmpCollection -output-mode stdout -output-file-type json -columns name,value,created_at,updated_at
+        [+] Completed, total inserted records = 1, total updated records = 1, total errors = 0.
 
-          {"name": "a", "value": "A", "created_at": {"$date": 1636281501457}}
-          {"name": "b", "value": "NEW VALUE", "created_at": {"$date": 1636281501540}, "updated_at": {"$date": 1636282327162}}
-          {"name": "c", "value": "c", "created_at": {"$date": 1636282327164}}
+        # Query records, here the document 'b' is updated and a new field `updated_at` is also added
+        dbutils  query -database Tmp -collection TmpCollection -output-mode stdout -output-file-type json -columns name,value,created_at,updated_at
+
+        {"name": "a", "value": "A", "created_at": {"$date": 1636281501457}}
+        {"name": "b", "value": "NEW VALUE", "created_at": {"$date": 1636281501540}, "updated_at": {"$date": 1636282327162}}
+        {"name": "c", "value": "c", "created_at": {"$date": 1636282327164}}
         ```
-      
+
 ## Query mode
 Query mode is used for querying records from the database and storing output in json or csv format in different modes like file, file-chunks or directly showing the output to stdout.
 
@@ -140,11 +140,11 @@ optional arguments:
       {"name": "a", "value": "A"}
       {"name": "b", "value": "NEW VALUE"}
       {"name": "c", "value": "c"}
-      
+
 
       # CSV
-      $ dbutils query -database Tmp -collection TmpCollection -output-mode stdout -output-file-type csv -include-header true -columns name,value 
-      
+      $ dbutils query -database Tmp -collection TmpCollection -output-mode stdout -output-file-type csv -include-header true -columns name,value
+
       name,value
       a,A
       b,NEW VALUE
@@ -166,7 +166,7 @@ optional arguments:
       b,NEW VALUE
       c,c
     ```
-4. Store output in file-chunks   
+4. Store output in file-chunks
   For large number of records, if you want to store records in multiple smaller files, you can use `file-chunks` mode. Each file will contain at most 500 records by default, you can modify it by using `-batch-size` argument.
       ```sh
       # Data stored in db
@@ -188,14 +188,14 @@ optional arguments:
       test-output-0.csv   test-output-1.csv
 
 
-      $ cat "./output-dir/test-output-0.csv" 
+      $ cat "./output-dir/test-output-0.csv"
 
       name,value
       a,A
       b,NEW VALUE
 
 
-      $ cat "./output-dir/test-output-1.csv" 
+      $ cat "./output-dir/test-output-1.csv"
 
       name,value
       c,c
