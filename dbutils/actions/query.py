@@ -1,4 +1,4 @@
-"""Insert mode"""
+"""Query mode"""
 import os
 import re
 import csv
@@ -52,8 +52,8 @@ class QueryModeOptions:
 
 def parse_arugments() -> argparse.Namespace:
     """Parse arguments for query mode."""
-    parser = argparse.ArgumentParser(description="DbUtils - query mode")
-    parser.add_argument("mode", help="Enter mode", choices=[constants.Modes.QUERY])
+    parser = argparse.ArgumentParser(description="DbUtils - Query mode")
+    parser.add_argument("mode", help="Operation mode", choices=[constants.Modes.QUERY])
 
     parser.add_argument("-database", help="Mongodb Database Name", required=True)
     parser.add_argument("-collection", help="Mongodb Collection Name", required=True)
@@ -66,7 +66,12 @@ def parse_arugments() -> argparse.Namespace:
     parser.add_argument("-limit", help="Limit number of records.", default=-1, type=int)
     parser.add_argument(
         "-output-mode",
-        help="Output modes. stdout=output on stdout, file=write output to file, file-chunks=write output in chunks (create multiple smaller files, use -batch-size arguments to customize batch-size.)",
+        help=(
+            "'stdout' output mode will print output in stdout. "
+            "'file' output mode will write output to a file. "
+            "'file-chunks' output mode will write output in smaller file chunks. "
+            "Use batch-mode argument to specify batch size."
+        ),
         required=True,
         choices=[
             constants.OutputMode.FILE,
@@ -143,7 +148,7 @@ def parse_arugments() -> argparse.Namespace:
 
 
 def create_options_from_args() -> QueryModeOptions:
-    """Parses arguments and returns InsertModeOptions."""
+    """Parses arguments and returns QueryModeOptions."""
     args = vars(parse_arugments())
 
     # FIXME: get mongodb connection string from environment variable

@@ -12,7 +12,7 @@ def parse_arguments():
 
     parser.add_argument(
         "mode",
-        help="Enter mode",
+        help="Operation mode",
         choices=[
             constants.Modes.CONVERT,
             constants.Modes.INSERT,
