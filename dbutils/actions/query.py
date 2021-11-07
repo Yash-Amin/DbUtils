@@ -1,11 +1,13 @@
 """Insert mode"""
 import os
 import re
+import csv
+import sys
 import argparse
-from pymongo import mongo_client
+from bson import json_util
 from dataclasses import dataclass
-from typing import Dict, List, Pattern
 from pymongo.mongo_client import MongoClient
+from typing import Dict, List, Pattern, TextIO
 
 from dbutils import constants
 from dbutils.utils import get_comma_separated_fields, str2bool
@@ -153,6 +155,67 @@ def create_options_from_args() -> QueryModeOptions:
     return QueryModeOptions(**args)
 
 
+def _write_json(records: List[Dict], output_file: TextIO):
+    """Write records to json file."""
+    # Using json_util.dumps convert mongodb record with object_id, to string
+    # and write records to file
+    output_file.writelines([json_util.dumps(record) + "\n" for record in records])
+
+    # Close output stream
+    if output_file != sys.stdout:
+        # If output_file mode is stdout, closing it will cause error for print()
+        output_file.close()
+
+
+def _write_csv(records: List[Dict], output_file: TextIO, write_header: bool = False):
+    """Write output to csv file."""
+    # Find unique column names
+    columns = set()
+    for record in records:
+        columns.update(record.keys())
+
+    csv_writer = csv.DictWriter(output_file, fieldnames=sorted(columns))
+
+    # Write columns
+    write_header and csv_writer.writeheader()
+
+    for record in records:
+        csv_writer.writerow(record)
+
+    # Close output stream
+    if output_file != sys.stdout:
+        # If output_file mode is stdout, closing it will cause error for print()
+        output_file.close()
+
+
+def output(options: QueryModeOptions, batch_id: int, records: List[Dict]):
+    """Write output"""
+    output_mode = options.output_mode
+
+    if output_mode == constants.OutputMode.STDOUT:
+        output_path = ""
+        output_stream = sys.stdout
+
+    elif output_mode == constants.OutputMode.FILE:
+        output_path = options.output_path
+        output_stream = open(output_path, "a")
+
+    elif output_mode == constants.OutputMode.FILE_CHUNKS:
+        output_file_name = (
+            f"{options.output_file_prefix}-{batch_id}.{options.output_file_extension}"
+        )
+
+        output_path = os.path.join(options.output_path, output_file_name)
+        output_stream = open(output_path, "w")
+
+    # Write output to csv/json file
+    if options.output_file_type == constants.FileTypes.CSV:
+        _write_csv(records, output_stream, options.include_header)
+
+    elif options.output_file_type == constants.FileTypes.JSON:
+        _write_json(records, output_stream)
+
+
 def run(options: QueryModeOptions) -> None:
     """Runs query mode."""
 
@@ -164,6 +227,17 @@ def run(options: QueryModeOptions) -> None:
         # and if directory '/some/path/' does not exist, it will be created
         dir_path = os.path.dirname(os.path.abspath(options.output_path))
         os.makedirs(dir_path, exist_ok=True)
+
+        # TODO: raise error if output-path exists, add new argument to
+        # overwrite file if it exists.
+
+        # If output_mode is file and output-path exists, this will delete it
+        if os.path.exists(options.output_path) and os.path.isfile(options.output_path):
+            os.unlink(options.output_path)
+    elif options.output_mode == constants.OutputMode.FILE_CHUNKS:
+        # TODO: if files with file-name matching output-mode-prefix and output-mode-extension
+        # exists, raise error
+        pass
 
     db = options.mongodb_collection
 
@@ -192,6 +266,8 @@ def run(options: QueryModeOptions) -> None:
         # If no records are found, exit
         if len(output_records) == 0:
             return
+
+        output(options, current_batch, output_records)
 
         current_batch += 1
 
