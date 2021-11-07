@@ -163,7 +163,7 @@ def run(options: QueryModeOptions) -> None:
         # If output-mode is `file` and if output-path is '/some/path/file.csv'
         # and if directory '/some/path/' does not exist, it will be created
         dir_path = os.path.dirname(os.path.abspath(options.output_path))
-        os.makedirs(dir_path)
+        os.makedirs(dir_path, exist_ok=True)
 
     db = options.mongodb_collection
 
