@@ -36,7 +36,7 @@ optional arguments:
 ```
 #### Examples
 
-1. Insert only
+1. Insert only  
    If you just want to insert records without checking if similar record exists, you can run the insert mode without providing the `-create-or-update` flag.
 
    ```sh
@@ -59,7 +59,7 @@ optional arguments:
    {"name": "a", "value": "A", "created_at": {"$date": 1636280805294}}
    {"name": "b", "value": "B", "created_at": {"$date": 1636280805391}}
    ```
-  2. Insert or Update records based on conditions
+  2. Insert or Update records based on conditions  
   Consider the following data is stored in TmpCollection -
         ```sh
         $ dbutils  query -database Tmp -collection TmpCollection -output-mode stdout -output-file-type json -columns name,value,created_at,updated_at
@@ -166,7 +166,7 @@ optional arguments:
       b,NEW VALUE
       c,c
     ```
-4. Store output in file-chunks
+4. Store output in file-chunks  
   For large number of records, if you want to store records in multiple smaller files, you can use `file-chunks` mode. Each file will contain at most 500 records by default, you can modify it by using `-batch-size` argument.
       ```sh
       # Data stored in db
